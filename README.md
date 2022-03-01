@@ -17,7 +17,7 @@ The code implements particle filterng for Online Ensemble Deep Gaussian Processe
 * --seed                &emsp; &emsp; &emsp; &emsp; &emsp; &ensp; Seed for Tensorflow and Numpy
 * --n_rff               &emsp; &emsp; &emsp; &emsp; &emsp; &ensp; Number of random features
 * --dataset             &emsp; &emsp; &emsp; &emsp; &ensp; Name of dataset
-* --mc_test             &emsp; &emsp; &emsp; &emsp; &nbsp; Number of Monte Carlo samples for VI predictions and also the number of candidate ensemble models
+* --mc_test             &emsp; &emsp; &emsp; &emsp; &nbsp; Number of Monte Carlo samples for VI predictions and of candidate ensemble models
 * --mc_train            &emsp; &emsp; &emsp; &emsp; &nbsp; Number of Monte Carlo samples for VI training
 * --duration            &emsp; &emsp; &emsp; &emsp; &nbsp; Duration in minutes
 * --optimizer           &emsp; &emsp; &emsp; &emsp; Optimizer: adam, adagrad, adadelta, or sgd
