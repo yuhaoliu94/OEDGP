@@ -45,7 +45,7 @@ python experiments/oedgp_rff_regression.py --seed=12345 --dataset=powerplant --f
 
 ### CLASSIFICATION
 ```
-python experiments/oedgp_rff_classification_gpu.py --seed=12345 --dataset=credit --fold=1 --q_Omega_fixed=1000 \
+python experiments/oedgp_rff_classification.py --seed=12345 --dataset=credit --fold=1 --q_Omega_fixed=1000 \
 --theta_fixed=4000 --ard_type=0 --optimizer=adam --h_tree=2 --learning_rate=0.001 --n_rff=100 \
 --batch_size=200 --mc_train=100 --mc_test=100 --n_iterations=100000 --display_step=250 --duration=60 \
 --kernel_type=arccosine --VI=False --M=100
