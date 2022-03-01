@@ -46,7 +46,7 @@ def sh(command):
 if __name__ == '__main__':
     FLAGS = utils.get_flags()
 
-    ## Set random seed for tensorflow and numpy operations
+    ## Set random seed for numpy operations
     np.random.seed(FLAGS.seed)
 
     data, test = import_dataset(FLAGS.dataset, FLAGS.fold)
