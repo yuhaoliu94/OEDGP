@@ -19,6 +19,7 @@ class OedgpRff(object):
 
     def __init__(self, dataset, likelihood_fun, num_examples, d_in, d_out, n_layers, n_rff, df, kernel_type, n_candidates, VI = True):
         """
+        :param dataset: The training dataset including X and Y
         :param likelihood_fun: Likelihood function
         :param num_examples: total number of input samples
         :param d_in: Dimensionality of the input
@@ -27,6 +28,8 @@ class OedgpRff(object):
         :param n_rff: Number of random features for each layer
         :param df: Number of GPs for each layer
         :param kernel_type: Kernel type: currently only random Fourier features for RBF and arccosine kernels are implemented
+        :param n_candidates: The number of candidate models to ensemble
+        :param VI: Whether we use the variational inference as prior or use naive prior
         """
         self.likelihood = likelihood_fun
         self.kernel_type = kernel_type
@@ -37,7 +40,8 @@ class OedgpRff(object):
         self.num_examples = num_examples
         self.nl = n_layers  ## Number of hidden layers
         self.nc = n_candidates  ## Number of candidate models
-
+        self.T = max(self.dhat_in)
+        
         ## These are arrays to allow flexibility in the future
         self.n_rff = n_rff * np.ones(n_layers, dtype=np.int32)
         self.df = df * np.ones(n_layers - 1, dtype=np.int32)
@@ -55,11 +59,11 @@ class OedgpRff(object):
             self.dhat_in = self.n_rff
             self.dhat_out = np.concatenate([self.df, [d_out]])
 
-        ## Initialize posterior parameters
+        ## Initialize lists of ensemble models
         self.ensemble = [OdgpRff(dataset, likelihood_fun, num_examples, d_in, d_out, n_layers, n_rff, df, kernel_type, i, VI) for i in range(n_candidates)]
         self.weight = np.array([1 / n_candidates for _ in range(n_candidates)])
         self.pred = [None for _ in range(n_candidates)]
-        self.T = max(self.dhat_in)
+        
 
     def learn(self, mc_train, n_iterations=None, display_step=100,  duration = None, test=None, mc_test=1, loss_function=None, less_prints=False):
         print(">>> Ensemble Online learning starts.")
@@ -74,7 +78,7 @@ class OedgpRff(object):
 
             total_train_time = 0
 
-            ## Present one sample to the DGP
+            ## Present candidate models to the DGP
             ells = []
             for i in range(self.nc):
                 if self.weight[i] > 1e-16:
