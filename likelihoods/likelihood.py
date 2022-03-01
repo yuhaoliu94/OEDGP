@@ -7,8 +7,8 @@ class Likelihood:
     def log_cond_prob(self, output, latent_val):
         """
         Subclass should implement log p(Y | F)
-        :param output:  (batch_size x Dout) matrix containing true outputs
-        :param latent_val: (MC x batch_size x Q) matrix of latent function values, usually Q=F
+        :param output:  (size x Dout) matrix containing true outputs
+        :param latent_val: (MC x size x Q) matrix of latent function values, usually Q=F
         :return:
         """
         raise NotImplementedError("Subclass should implement this.")
