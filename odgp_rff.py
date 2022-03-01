@@ -17,6 +17,7 @@ current_milli_time = lambda: int(round(time.time() * 1000))
 class OdgpRff(object):
     def __init__(self, dataset, likelihood_fun, num_examples, d_in, d_out, n_layers, n_rff, df, kernel_type, index, VI = True):
         """
+        :param dataset: The training dataset including X and Y
         :param likelihood_fun: Likelihood function
         :param num_examples: total number of input samples
         :param d_in: Dimensionality of the input
@@ -25,6 +26,8 @@ class OdgpRff(object):
         :param n_rff: Number of random features for each layer
         :param df: Number of GPs for each layer
         :param kernel_type: Kernel type: currently only random Fourier features for RBF and arccosine kernels are implemented
+        :param index: The index of candidate model
+        :param VI: Whether use variatioanl inference as prior or use naive prior
         """
         self.hidden_likelihood = likelihoods.Student_t()
         self.prior_likelihood = likelihoods.Gaussian()
@@ -39,7 +42,13 @@ class OdgpRff(object):
         self.n_Omega = n_layers  ## Number of weigh matrices is "Number of hidden layers"
         self.n_W = n_layers
         self.index = index
-
+        self.total_train_time = 0
+        
+        if VI is None:
+            self.T = 0
+        else:
+            self.T = max(self.dhat_in)
+            
         ## These are arrays to allow flexibility in the future
         self.n_rff = n_rff * np.ones(n_layers, dtype=np.int32)
         self.df = df * np.ones(n_layers - 1, dtype=np.int32)
@@ -57,15 +66,7 @@ class OdgpRff(object):
             self.dhat_in = self.n_rff
             self.dhat_out = np.concatenate([self.df, [d_out]])
 
-        if VI is None:
-            self.T = 0
-        else:
-            self.T = max(self.dhat_in)
-
         ## Initialize posterior parameters
-
-        self.total_train_time = 0
-
         self.log_theta_sigma2 = self.init_prior_log_theta_sigma2()
 
         self.Omega = self.init_prior_Omega()
@@ -145,7 +146,7 @@ class OdgpRff(object):
 
             self.T_prior = 0
 
-            print(">>> Initialization start.")
+            # print(">>> Initialization start.")
 
             mnll_prior = 0
 
@@ -181,8 +182,8 @@ class OdgpRff(object):
         x = self.dataset.X[self.T_prior % max(self.dhat_in),:]
         y = self.dataset.Y[self.T_prior % max(self.dhat_in),:]
 
-        ## The representation of the information is based on 3-dimensional tensors (one for each layer)
-        ## Each slice [i,:,:] of these tensors is one Monte Carlo realization of the value of the hidden units
+        ## The representation of the information is based on 2-dimensional ndarrays (one for each layer)
+        ## Each slice [i,:] of these ndarrays is one Monte Carlo realization of the value of the hidden units
         ## At layer zero we simply replicate the input matrix X self.mc times
         self.forward_layer = []
         self.forward_mean = []
@@ -234,14 +235,14 @@ class OdgpRff(object):
         x = self.dataset.X[self.T_prior % max(self.dhat_in), :]
         y = self.dataset.Y[self.T_prior % max(self.dhat_in), :]
 
-        ## The representation of the information is based on 3-dimensional tensors (one for each layer)
-        ## Each slice [i,:,:] of these tensors is one Monte Carlo realization of the value of the hidden units
+        ## The representation of the information is based on 2-dimensional ndarrays (one for each layer)
+        ## Each slice [i,:] of these tensors is one Monte Carlo realization of the value of the hidden units
         ## At layer zero we simply replicate the input matrix X self.mc times
         self.backward_layer = []
 
         self.backward_layer.insert(0, y)
 
-        ## Forward propagate information from the input to the output through hidden layers
+        ## Backward propagate information from the output to the input through hidden layers
         for i in reversed(range(2, self.nl+1)):
             if i == self.nl and self.likelihood.get_name() == "Classification":
                 log_weights = self.likelihood.log_cond_prob(self.backward_layer[0], self.forward_mean[i])
@@ -266,7 +267,7 @@ class OdgpRff(object):
             elif self.kernel_type == "arccosine":
                 phi = 1 / np.sqrt(self.n_rff[i]) * np.maximum(layer_times_Omega,0.0)
 
-            mean = np.dot(phi, self.mean_W[i].T)  # dhat_out
+            mean = np.dot(phi, self.mean_W[i].T)
             residual = self.backward_layer[i + 1] - mean
             for j in range(self.dhat_out[i]):
                 tmp = np.dot(phi, self.Sigma_W[i][j, :, :])
@@ -290,7 +291,7 @@ class OdgpRff(object):
 
         return r
 
-    ## Returns Student's T's noises for layers
+    ## Returns Student t's noises for layers
     def sample_from_noise(self, mc, task = "training", prior = False):
         noise = []
         for i in range(self.nl):
@@ -306,7 +307,7 @@ class OdgpRff(object):
 
         return noise
 
-    ## Returns the expected log-likelihood term in the variational lower bound
+    ## Returns the expected log-likelihood term and prediction
     def forward(self, mc=1, task="training", x=None, y=None):
         if task == "training":
             # if self.T % max(self.dhat_in) == 0:
@@ -320,8 +321,8 @@ class OdgpRff(object):
             x = self.dataset.X[self.T % self.num_examples,:]
             y = self.dataset.Y[self.T % self.num_examples,:]
 
-        ## The representation of the information is based on 3-dimensional tensors (one for each layer)
-        ## Each slice [i,:,:] of these tensors is one Monte Carlo realization of the value of the hidden units
+        ## The representation of the information is based on 2-dimensional ndarrays (one for each layer)
+        ## Each slice [i,:] of these ndarrays is one Monte Carlo realization of the value of the hidden units
         ## At layer zero we simply replicate the input matrix X self.mc times
         self.forward_layer = []
         self.forward_mean = []
@@ -374,15 +375,12 @@ class OdgpRff(object):
 
         x = self.dataset.X[self.T % self.num_examples, :]
         y = self.dataset.Y[self.T % self.num_examples, :]
-
-        ## The representation of the information is based on 3-dimensional tensors (one for each layer)
-        ## Each slice [i,:,:] of these tensors is one Monte Carlo realization of the value of the hidden units
-        ## At layer zero we simply replicate the input matrix X self.mc times
+        
         self.backward_layer = []
 
         self.backward_layer.insert(0, y)
 
-        ## Forward propagate information from the input to the output through hidden layers
+        ## Backrward propagate information from the output to the input through hidden layers
         for i in reversed(range(2, self.nl+1)):
             if i == self.nl and self.likelihood.get_name() == "Classification":
                 log_weights = self.likelihood.log_cond_prob(self.backward_layer[0], self.forward_mean[i])
@@ -419,7 +417,7 @@ class OdgpRff(object):
                 self.mean_W[i][j,:] += k * residual[j]
                 self.Sigma_W[i][j,:,:] = np.dot(np.eye(self.dhat_in[i]) - np.dot(k.reshape(-1,1), phi.reshape(1,-1)), self.Sigma_W[i][j,:,:])
 
-    ## Function that learns the deep GP model with random Fourier feature approximation
+    ## Function that learns the deep GP model sequentially with random Fourier feature approximation
     def learn(self, mc_train, n_iterations=None, display_step=100, test=None, mc_test=1, loss_function=None):
 
         N_test = test.X.shape[0]
