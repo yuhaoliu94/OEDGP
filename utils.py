@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import t, norm
 import tensorflow as tf
 
+## Draw prior hyper-parameters
 def get_random(size):
     stack = pow(10, np.linspace(-4,6,11))
     return np.random.choice(stack, size)
@@ -14,7 +15,7 @@ def log_norm_pdf(x, loc=0.0, scale=0.0):
 def log_t_pdf(x, loc=0.0, scale=0.0, df=3):
     return t.pdf(x, df=df, loc=loc, scale=scale)
 
-## Draw an array of normal
+## Draw an array of multivariate normal
 def get_mvn_samples(mean, cov, shape):
     return np.random.multivariate_normal(mean=mean, cov=cov, size=shape)
 
@@ -26,11 +27,13 @@ def get_normal_samples(shape):
 def get_t_samples(shape, nu):
     return np.minimum(np.random.standard_t(df=nu, size=shape), 10)
 
+## Calculate the phi^\top \Sigma \phi
 def diag(Phi, Sigma):
     tmp = np.dot(Phi, Sigma)
     var = [np.dot(tmp[mc,:], Phi[mc,:]) for mc in range(Phi.shape[0])]
     return np.array(var)
 
+## Normalize log weights
 def normalize_weight(log_weight):
     log_weight -= max(log_weight)
     weight = np.exp(log_weight)
@@ -77,17 +80,7 @@ def get_flags():
     tf.app.flags.DEFINE_string("fold", "1", "Dataset fold")
     tf.app.flags.DEFINE_integer("seed", 0, "Seed for random tf and np operations")
     tf.app.flags.DEFINE_boolean("less_prints", False, "Disables evaluations involving the complete dataset without batching")
-
-    # Flags to setup distributed exectuion
-    # Flags for defining the tf.train.ClusterSpec
-    # These can be set by using the following CLI arguments:
-    # --ps_hosts=ps0.example.com:2222,ps1.example.com:2222 \
-    # --worker_hosts=worker0.example.com:2222,worker1.example.com:2222 \
-    tf.app.flags.DEFINE_string("ps_hosts", "", "Comma-separated list of hostname:port pairs")
-    tf.app.flags.DEFINE_string("worker_hosts", "", "Comma-separated list of hostname:port pairs")
-    # Flags for defining the tf.train.Server
-    tf.app.flags.DEFINE_string("job_name", "", "One of 'ps', 'worker'")
-    tf.app.flags.DEFINE_integer("task_index", 0, "Index of task within the job")
+    
     return FLAGS
 
 ## Define the right optimizer for a given flag from command line
