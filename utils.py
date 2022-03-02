@@ -65,15 +65,19 @@ def get_flags():
     flags.DEFINE_string('optimizer', "adagrad", 'Optimizer')
     flags.DEFINE_string('kernel_type', "RBF", 'arccosine')
     flags.DEFINE_integer('kernel_arccosine_degree', 1, 'Degree parameter of arc-cosine kernel')
-    flags.DEFINE_boolean('is_ard', False, 'Using ARD kernel or isotropic')
-    flags.DEFINE_boolean('local_reparam', False, 'Using the local reparameterization trick')
+    flags.DEFINE_boolean('is_ard', True, 'Using ARD kernel or isotropic')
+    flags.DEFINE_boolean('local_reparam', True, 'Using the local reparameterization trick')
     flags.DEFINE_boolean('feed_forward', False, 'Feed original inputs to each layer')
     flags.DEFINE_boolean('VI', True, 'Using variational inference or not')
     flags.DEFINE_integer('q_Omega_fixed', 0, 'Number of iterations to keep posterior over Omega fixed')
     flags.DEFINE_integer('theta_fixed', 0, 'Number of iterations to keep theta fixed')
-    flags.DEFINE_string('learn_Omega', 'prior_fixed', 'How to treat Omega - fixed (from the prior), optimized, or learned variationally')
+    flags.DEFINE_string('learn_Omega', 'var_fixed', 'How to treat Omega - fixed (from the prior), optimized, or learned variationally')
     flags.DEFINE_integer('duration', 100000, 'Duration of job in minutes')
-    flags.DEFINE_integer('M', 100, 'Number of Monte Carlo samples used to online learning')
+
+    # Flags for online learning
+    flags.DEFINE_integer('N_iterations', 0, 'Number of iterations (samples) to feed to the DGP, 0: Only use samples once.')
+    flags.DEFINE_integer('MC_train', 100, 'Number of Monte Carlo samples used to online training')
+    flags.DEFINE_integer('MC_test', 100, 'Number of Monte Carlo samples used to online prediction')
 
     # Flags for use in cluster experiments
     tf.app.flags.DEFINE_string("dataset", "", "Dataset name")

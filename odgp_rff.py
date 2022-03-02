@@ -43,11 +43,6 @@ class OdgpRff(object):
         self.n_W = n_layers
         self.index = index
         self.total_train_time = 0
-        
-        if VI is None:
-            self.T = 0
-        else:
-            self.T = max(self.dhat_in)
             
         ## These are arrays to allow flexibility in the future
         self.n_rff = n_rff * np.ones(n_layers, dtype=np.int32)
@@ -65,6 +60,11 @@ class OdgpRff(object):
         if self.kernel_type == "arccosine":
             self.dhat_in = self.n_rff
             self.dhat_out = np.concatenate([self.df, [d_out]])
+
+        if VI:
+            self.T = max(self.dhat_in)
+        else:
+            self.T = 0
 
         ## Initialize posterior parameters
         self.log_theta_sigma2 = self.init_prior_log_theta_sigma2()
@@ -150,15 +150,15 @@ class OdgpRff(object):
 
             mnll_prior = 0
 
-            for iteration in range(N_prior * 5):
+            for iteration in range(N_prior * 1):
                 start_train_time = current_milli_time()
 
                 ell, _ = self.forward_prior()
                 mnll_prior = (mnll_prior * iteration + ell) / (iteration + 1)
 
-                if iteration % 250 == 0:
-                    print(">>> i=" + repr(iteration) + "  n=" + repr(self.T_prior // N_prior) + "  mnll_train=" + repr(-mnll_prior) , end="  ")
-                    print("")
+                # if iteration % 250 == 0:
+                #     print(">>> i=" + repr(iteration) + "  n=" + repr(self.T_prior // N_prior) + "  mnll_train=" + repr(-mnll_prior) , end="  ")
+                #     print("")
 
                 self.backward_prior()
                 for i in range(1, self.nl):
@@ -171,6 +171,8 @@ class OdgpRff(object):
                 self.total_train_time += current_milli_time() - start_train_time
             last_layer = np.atleast_2d(self.dataset.Y[:N_prior, :])
             Phi.append(last_layer.T)
+
+            self.T = self.T_prior
 
         return Phi
 
@@ -208,7 +210,7 @@ class OdgpRff(object):
 
             var = np.zeros([mc, self.dhat_out[i]])
             for j in range(self.dhat_out[i]):
-                var[:,j] = utils.diag(Phi, self.Sigma_W[i][j,:,:]) + 1
+                var[:,j] = utils.diag(Phi, self.Sigma_W[i][j,:,:]) + 1e-4
             self.forward_var.append(var)
 
             F = mean + np.sqrt(var) * self.noise[i]
@@ -271,7 +273,7 @@ class OdgpRff(object):
             residual = self.backward_layer[i + 1] - mean
             for j in range(self.dhat_out[i]):
                 tmp = np.dot(phi, self.Sigma_W[i][j, :, :])
-                sufficient = 1 + np.dot(tmp, phi)
+                sufficient = 1e-4 + np.dot(tmp, phi)
                 k = tmp / sufficient
                 self.mean_W[i][j,:] += k * residual[j]
                 self.Sigma_W[i][j,:,:] = np.dot(np.eye(self.dhat_in[i]) - np.dot(k.reshape(-1,1), phi.reshape(1,-1)), self.Sigma_W[i][j,:,:])

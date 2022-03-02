@@ -40,7 +40,6 @@ class OedgpRff(object):
         self.num_examples = num_examples
         self.nl = n_layers  ## Number of hidden layers
         self.nc = n_candidates  ## Number of candidate models
-        self.T = max(self.dhat_in)
         
         ## These are arrays to allow flexibility in the future
         self.n_rff = n_rff * np.ones(n_layers, dtype=np.int32)
@@ -59,16 +58,18 @@ class OedgpRff(object):
             self.dhat_in = self.n_rff
             self.dhat_out = np.concatenate([self.df, [d_out]])
 
+        self.T = max(self.dhat_in)
+
         ## Initialize lists of ensemble models
         self.ensemble = [OdgpRff(dataset, likelihood_fun, num_examples, d_in, d_out, n_layers, n_rff, df, kernel_type, i, VI) for i in range(n_candidates)]
         self.weight = np.array([1 / n_candidates for _ in range(n_candidates)])
         self.pred = [None for _ in range(n_candidates)]
-        
+
 
     def learn(self, mc_train, n_iterations=None, display_step=100,  duration = None, test=None, mc_test=1, loss_function=None, less_prints=False):
         print(">>> Ensemble Online learning starts.")
 
-        if n_iterations is None:
+        if n_iterations == 0:
             n_iterations = self.num_examples - max(self.dhat_in)
 
         mnll_train = 0
