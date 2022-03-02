@@ -113,8 +113,9 @@ class OedgpRff(object):
                         self.pred[i] = self.ensemble[i].pred
                     pred = np.average(np.array(self.pred), axis=0, weights=self.weight)
 
-                    mnll_test = [self.ensemble[i].mnll_test for i in range(self.nc)]
-                    mnll_test = np.average(mnll_test, weights=self.weight)
+                    mnll_test = np.array([self.ensemble[i].mnll_test for i in range(self.nc)])
+                    mnll_test_m = max(mnll_test)
+                    mnll_test = mnll_test_m + np.log(np.average(np.exp(mnll_test - mnll_test_m), weights=self.weight))
 
                     elapsed_time = total_train_time + (current_milli_time() - start_predict_time)
 
