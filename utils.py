@@ -9,11 +9,11 @@ def get_random(size):
 
 ## Log-density of a univariate Gaussian distribution
 def log_norm_pdf(x, loc=0.0, scale=0.0):
-    return norm.pdf(x, loc=loc, scale=scale)
+    return norm.logpdf(x, loc=loc, scale=scale)
 
 ## Log-density of a univariate t distribution
 def log_t_pdf(x, loc=0.0, scale=0.0, df=3):
-    return t.pdf(x, df=df, loc=loc, scale=scale)
+    return t.logpdf(x, df=df, loc=loc, scale=scale)
 
 ## Draw an array of multivariate normal
 def get_mvn_samples(mean, cov, shape):
