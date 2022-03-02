@@ -78,7 +78,7 @@ if __name__ == '__main__':
                  FLAGS.kernel_type, FLAGS.mc_test, FLAGS.VI)
 
     ## Learning
-    oedgp.learn(FLAGS.M, None, FLAGS.display_step, FLAGS.duration, test, FLAGS.mc_test, error_rate,
+    oedgp.learn(FLAGS.MC_train, FLAGS.N_iterations, FLAGS.display_step, FLAGS.duration, test, FLAGS.MC_test, error_rate,
                FLAGS.less_prints)
 
     # odgp = OdgpRff(data, like, data.num_examples, data.X.shape[1], data.Y.shape[1], FLAGS.nl, FLAGS.n_rff, FLAGS.df,
