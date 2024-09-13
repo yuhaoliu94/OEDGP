@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 
 from src.onlinedgp.distributions import Normal
-from src.onlinedgp.functions import RandomFeatureGP
+from src.onlinedgp.functions import RandomFeatureGP, Sigmoid
 from src.onlinedgp.utils import normalize_weights, get_sequential_mse, get_sequential_mnll
 
 
@@ -230,3 +230,10 @@ class ObservationResLayer(ObservationLayer):
 
         # mnll
         self.mnll = get_sequential_mnll(self.mnll, self.t - 1, self.y_log_likelihood_forward)
+
+
+class ObservationBinaryLayer(ObservationLayer):
+
+    def initialize_transition_function(self):
+        self.din = self.dim
+        self.function = Sigmoid(self.din, self.dout)

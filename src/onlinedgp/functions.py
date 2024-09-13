@@ -4,7 +4,7 @@ from abc import ABC
 
 from src.onlinedgp.utils import symmetric_mult
 from src.onlinedgp.optimizers import AdamSGD
-from src.onlinedgp.likelihoods import NormalLikelihood, MarginalLikelihood
+from src.onlinedgp.likelihoods import NormalLikelihood, MarginalLikelihood, BinaryLikelihood
 from src.onlinedgp.distributions import InverseGamma, Normal
 
 
@@ -146,3 +146,46 @@ class RandomFeatureGP(Function):
         marginal_dist = MarginalLikelihood(self.t + 1, det_Lambda, self.a0, a, self.b0, b)
         log_likelihood = marginal_dist.get_loglikelihood()
         return np.sum(log_likelihood)
+
+
+class Sigmoid(Function):
+    def __init__(self, din: int, dout: int) -> None:
+        super().__init__()
+
+        # int scalar
+        self.din = din
+        self.dout = dout
+
+        self.predict_dist = None
+
+        self.y_log_likelihood = []
+
+    def predict(self, input_particles: np.ndarray) -> np.ndarray:
+        """M * Dy --> M * Dy"""
+        output_particles = 1 / (1 + np.exp(-input_particles))
+
+        self.predict_dist = output_particles
+        return output_particles
+
+    def update(self, input_vector: np.ndarray, output_vector: np.ndarray) -> None:
+        """Dy, Dy"""
+
+        self.t += 1
+
+    def cal_log_likelihood(self, y: np.ndarray):
+        """M * Dy"""
+        marginal_dist = BinaryLikelihood(y, self.predict_dist)
+        log_likelihood = marginal_dist.get_loglikelihood()
+        cumdim_log_likelihood = np.sum(log_likelihood, axis=1)
+        self.y_log_likelihood.append(np.average(cumdim_log_likelihood))
+        return cumdim_log_likelihood
+
+    def cal_y_log_likelihood(self) -> float:
+        return np.sum(self.y_log_likelihood)
+
+    def cal_y_log_likelihood_forward(self, input_vector: np.ndarray, output_vector: np.ndarray) -> float:
+        output_vector_hat = 1 / (1 + np.exp(-input_vector))
+        marginal_dist = BinaryLikelihood(output_vector, output_vector_hat)
+        log_likelihood = marginal_dist.get_loglikelihood()
+        cumdim_log_likelihood = np.sum(log_likelihood)
+        return cumdim_log_likelihood + np.sum(self.y_log_likelihood[:-1])
