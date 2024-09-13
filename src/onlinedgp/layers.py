@@ -41,8 +41,7 @@ class Layer(ABC):
         return normal_generator.sample_univariate(0, 1, (self.M, self.dim))
 
     def initialize_transition_function(self):
-        if self.din is None:
-            self.din = self.prev_layer.dim
+        self.din = self.prev_layer.dim
         self.function = RandomFeatureGP(self.din, self.dout, self.J, self.warm_start, self.learning_rate)
 
     def get_input_particles(self) -> np.ndarray:
@@ -62,6 +61,9 @@ class Layer(ABC):
 
 
 class RootLayer(Layer):
+
+    def initialize_transition_function(self):
+        self.function = RandomFeatureGP(self.din, self.dout, self.J, self.warm_start, self.learning_rate)
 
     def get_input_particles(self, x: np.ndarray = None) -> np.ndarray:
         replicate_x = np.repeat(x[np.newaxis, :], self.M, axis=0)  # M * Dx
@@ -105,6 +107,38 @@ class HiddenLayer(Layer):
 
     def update(self) -> None:
         self.function.update(self.prev_layer.current_state, self.current_state)
+
+        self.t += 1
+
+
+class HiddenResLayer(Layer):
+
+    def initialize_transition_function(self):
+        self.din += self.dim
+        self.function = RandomFeatureGP(self.din, self.dout, self.J, self.warm_start, self.learning_rate)
+
+    def get_input_particles(self, x: np.ndarray = None) -> np.ndarray:
+        replicate_x = np.repeat(x[np.newaxis, :], self.M, axis=0)  # M * Dx
+        input_particles = np.concatenate((replicate_x, self.prev_layer.current_particle_state), axis=1)
+        return input_particles
+
+    def predict(self, x: np.ndarray = None) -> None:
+        predict_particle = self.function.predict(self.get_input_particles(x))
+        self.current_particle_state = predict_particle
+
+    def filter(self) -> None:
+        weights = self.next_layer.particle_weights_for_prev_layer
+
+        self.current_state = np.average(self.current_particle_state, weights=weights, axis=0)
+        self.stored_states.append(deepcopy(self.current_state))
+
+        replicate_current_state = np.repeat(self.current_state[np.newaxis, :], self.M, axis=0)  # M * dim
+        log_likelihood = self.function.cal_log_likelihood(replicate_current_state)  # M
+        self.particle_weights_for_prev_layer = normalize_weights(log_likelihood)
+
+    def update(self, x: np.ndarray = None) -> None:
+        ensemble_input = np.concatenate((x, self.prev_layer.current_state))
+        self.function.update(ensemble_input, self.current_state)
 
         self.t += 1
 

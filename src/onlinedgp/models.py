@@ -4,7 +4,7 @@ from time import time
 
 import numpy as np
 
-from src.onlinedgp.layers import ObservationLayer, HiddenLayer, RootLayer
+from src.onlinedgp.layers import ObservationLayer, HiddenLayer, RootLayer, HiddenResLayer
 from src.onlinedgp.utils import import_dataset, get_mse, get_mnll, get_svd_representation_list
 
 
@@ -50,10 +50,7 @@ class StandardSingleModel(ABC):
 
         constant_param = (self.M, self.J, self.warm_start, self.learning_rate)
 
-        self.hidden_layers += [RootLayer(self.dim_hidden[0], *constant_param, self.data.Dx)]
-        self.hidden_layers += self.construct_hidden_layers(constant_param)
-        self.observation_layer = ObservationLayer(self.dim_all[-1], *constant_param)
-        self.layers = self.hidden_layers + [self.observation_layer]
+        self.customize_layers(constant_param)
 
         for i in range(self.num_all_layer - 1):
             self.layers[i].next_layer = self.layers[i + 1]
@@ -69,6 +66,12 @@ class StandardSingleModel(ABC):
             for i in range(self.num_all_layer):
                 self.layers[i].initialize_transition_function()
                 self.layers[i].function = self.functions[i]
+
+    def customize_layers(self, constant_param):
+        self.hidden_layers += [RootLayer(self.dim_hidden[0], *constant_param, self.data.Dx)]
+        self.hidden_layers += self.construct_hidden_layers(constant_param)
+        self.observation_layer = ObservationLayer(self.dim_all[-1], *constant_param)
+        self.layers = self.hidden_layers + [self.observation_layer]
 
     # def initialize_structure_from_model(self, model_from_different_class=None, model_from_same_class=None):
     #     if model_from_different_class:
@@ -193,3 +196,26 @@ class StandardSingleModel(ABC):
 
         return {"actual_svd_representation": actual_svd_representation,
                 "estimated_svd_representation": estimated_svd_representation}
+
+
+class ResSingleModel(StandardSingleModel):
+    def construct_hidden_layers(self, constant_param):
+        middle_layers = [HiddenResLayer(self.dim_hidden[i], *constant_param, self.data.Dx)
+                         for i in range(1, self.num_hidden_layer)]
+        return middle_layers
+
+    def predict(self):
+        x = self.data.X[self.t, :]
+        for i in range(self.num_all_layer - 1):
+            self.layers[i].predict(x)
+
+        self.layers[-1].predict()
+
+    def update(self):
+        x = self.data.X[self.t, :]
+        for i in range(self.num_all_layer - 1):
+            self.layers[i].update(x)
+
+        self.layers[-1].update()
+
+        self.t += 1
