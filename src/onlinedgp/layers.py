@@ -236,4 +236,4 @@ class ObservationBinaryLayer(ObservationLayer):
 
     def initialize_transition_function(self):
         self.din = self.dim
-        self.function = Sigmoid(self.din, self.dout)
+        self.function = Sigmoid(self.din, self.dout, self.warm_start, self.learning_rate)
